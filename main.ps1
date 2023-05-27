@@ -110,20 +110,30 @@ networks:
   $Final | Out-File .\docker-compose.yml -Append
 }
 
-if (!(docker --version)) {
-  Write-Host "Docker Desktop not installed, attempting to install"
-
-  Start-Process "Docker Desktop Installer.exe" -Wait install
+try {
+  $dockerVersion = docker --version 2>&1
+}
+catch {
+  $dockerVersion = $_.Exception.Message
 }
 
-$dockerVersion = docker --version
-if ($LASTEXITCODE -eq 0) {
-  if ($null -ne (docker network ls -f "name=wsl" -q)) {
-    Write-Host "docker network name wsl already exists, skipping creation"
+if ($dockerVersion) {
+  Write-Host "docker is installed. version: $dockerVersion"
+}
+else {
+  Write-Host "docker desktop not installed, attempting to download & install"
+  if (-not(Test-Path "DockerDesktopInstaller.exe")) {
+    Invoke-WebRequest -Uri "https://desktop.docker.com/win/stable/Docker%20Desktop%20Installer.exe" -OutFile DockerDesktopInstaller.exe
   }
-  else {
-    docker network create wsl
-  }
+  Start-Process "DockerDesktopInstaller.exe" -Wait install
+  Read-Host -Prompt "docker installation complete. press enter to exit & re-run the script after running docker desktop application manually"
+}
+
+if ($null -ne (docker network ls -f "name=wsl" -q)) {
+  Write-Host "docker network name wsl already exists, skipping creation"
+}
+else {
+  docker network create wsl
 }
 
 $TimeZone = Read-Host -Prompt "timezone? [Default: Asia/Singapore]"
@@ -150,5 +160,15 @@ $otherr | ForEach-Object {
 
 Final
 
-Write-Host "a docker-compose.yml has been generated, you may check it first"
-Write-Host "or straight away run `"docker compose up -d`""
+Write-Host "a docker-compose.yml has been generated, you may check it first" -ForegroundColor Yellow
+$choice = Read-Host -Prompt "Or straight away run `"docker compose up -d`"? [y/n]"
+
+if ($choice -eq 'y' -or $choice -eq 'Y' -or $choice -eq '') { 
+  docker compose up -d 
+}
+
+Write-Host "creating additional folder for tv & movie"
+$folder = '.\data\media\tv', '.\data\media\movie'
+$folder | ForEach-Object { New-Item -ItemType Directory -Path $_ -ErrorAction SilentlyContinue }
+
+Read-Host -Prompt "press enter to exit, you may proceed to configure the *arr services manually"
