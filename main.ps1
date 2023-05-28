@@ -1,6 +1,6 @@
-function Containarr {
+function Add-Containarr {
   param (
-    $Servarr,
+    $Name,
     $TimeZone
   )
 
@@ -12,19 +12,19 @@ function Containarr {
     "Overseerr" = "5055"
   }
 
-  $Port = $Ports[$Servarr]
+  $Port = $Ports[$Name]
 
   $Template = @"
-  ${Servarr}:
-    image: lscr.io/linuxserver/${Servarr}:latest
-    container_name: ${Servarr}
+  ${Name}:
+    image: lscr.io/linuxserver/${Name}:latest
+    container_name: ${Name}
     environment:
       - TZ=${TimeZone}
     volumes:
-      - ./config/${Servarr}-config:/config
+      - ./config/${Name}-config:/config
       - ./data:/data
     ports:
-      - "${Port}:${Port}"
+      - ${Port}:${Port}
     networks:
       - wsl
     restart: unless-stopped
@@ -34,7 +34,7 @@ function Containarr {
   $Template | Out-File .\docker-compose.yml -Append
 }
 
-function plex {
+function Add-Plex {
   param (
     $TimeZone
   )
@@ -50,7 +50,7 @@ function plex {
       - ./config/plex-config:/config
       - ./data/media/:/media
     ports:
-      - "32400:32400"
+      - 32400:32400
     networks:
       - wsl
     restart: unless-stopped
@@ -60,7 +60,7 @@ function plex {
   $Template | Out-File .\docker-compose.yml -Append
 }
 
-function qbittorrent {
+function Add-Qbittorrent {
   param (
     $TimeZone
   )
@@ -78,9 +78,9 @@ function qbittorrent {
       - ./data/torrents/tv:/data/torrents/tv
       - ./data/torrents/movies:/data/torrents/movies
     ports:
-      - "8080:8080"
-      - "6881:6881"
-      - "6881:6881/udp"
+      - 8080:8080
+      - 6881:6881
+      - 6881:6881/udp
     networks:
       - wsl
     restart: unless-stopped
@@ -145,16 +145,15 @@ $servarr = 'sonarr', 'radarr', 'bazarr', 'prowlarr', 'overseerr'
 $servarr | ForEach-Object {
   $choice = Read-Host -Prompt "install $($_)? [y/n]"
   if ($choice -eq 'y' -or $choice -eq 'Y' -or $choice -eq '') {
-    Containarr -Servarr $_ -TimeZone $TimeZone
+    Add-Containarr -Name $_ -TimeZone $TimeZone
   }
 }
 
 $otherr = 'plex', 'qbittorrent'
-
 $otherr | ForEach-Object {
   $choice = Read-Host -Prompt "install $($_)? [y/n]"
   if ($choice -eq 'y' -or $choice -eq 'Y' -or $choice -eq '') {
-    Invoke-Expression -Command "$($_) $TimeZone"
+    Invoke-Expression -Command "Add-$($_) $TimeZone"
   }
 }
 
