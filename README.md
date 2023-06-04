@@ -15,7 +15,7 @@ currently compatible for windows but docker is running via [WSL2 engine](https:/
 
 ## usage
 
-clone this repo using [git](https://git-scm.com/download/win) or dowonload as zip and extract it
+clone this repo using [git](https://git-scm.com/download/win) or download as zip and extract it
 ```powershell
 git clone https://github.com/opariffazman/arr-apps.git
 ```
