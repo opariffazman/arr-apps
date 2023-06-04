@@ -10,8 +10,10 @@ currently compatible for windows but docker is running via [WSL2 engine](https:/
 - [sonarr](https://sonarr.tv/) - tv collection manager
 - [bazarr](https://www.bazarr.media/) - subtitles manager
 - [prowlarr](https://wiki.servarr.com/en/prowlarr) - indexer
-- [nginxproxymanager](https://nginxproxymanager.com/)
-- [duckdns](https://www.duckdns.org/) - free dynamic dns provider
+- *[nginxproxymanager](https://nginxproxymanager.com/) - reverse proxy for exposing services securely
+- *[duckdns](https://www.duckdns.org/) - free dynamic dns provider
+
+`*` is optional & not needed for the *arr suite to work
 
 ## usage
 
