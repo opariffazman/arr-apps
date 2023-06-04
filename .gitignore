@@ -2,3 +2,4 @@ config
 data
 docker-compose.yml
 DockerDesktopInstaller.exe
+.env

@@ -1,7 +1,14 @@
+function Set-Prompt {
+  param(
+    $prompt,
+    $color
+  )
+  return $(Write-Host "${prompt}: " -ForegroundColor $color -NoNewline; Read-Host)
+}
+
 function Add-Containarr {
   param (
-    $Name,
-    $TimeZone
+    $name
   )
 
   $Ports = @{
@@ -12,65 +19,52 @@ function Add-Containarr {
     "Overseerr" = "5055"
   }
 
-  $Port = $Ports[$Name]
+  $Port = $Ports[$name]
 
-  $Template = @"
-  ${Name}:
-    image: lscr.io/linuxserver/${Name}:latest
-    container_name: ${Name}
+  $template = @"
+  ${name}:
+    image: lscr.io/linuxserver/${name}:latest
+    container_name: ${name}
     environment:
-      - TZ=${TimeZone}
+      - TZ=`${TIMEZONE}
     volumes:
-      - ./config/${Name}-config:/config
+      - ./config/${name}-config:/config
       - ./data:/data
     ports:
       - ${Port}:${Port}
-    networks:
-      - wsl
     restart: unless-stopped
 
 "@
   
-  $Template | Out-File .\docker-compose.yml -Append
+  $template | Out-File .\docker-compose.yml -Append
 }
-
 function Add-Plex {
-  param (
-    $TimeZone
-  )
-
-  $Template = @"
+  $template = @"
   plex:
     image: lscr.io/linuxserver/plex:latest
     container_name: plex
     environment:
-      - TZ=${TimeZone}
+      - TZ=`${TIMEZONE}
       - VERSION=docker
     volumes:
       - ./config/plex-config:/config
       - ./data/media/:/media
     ports:
       - 32400:32400
-    networks:
-      - wsl
     restart: unless-stopped
 
 "@
 
-  $Template | Out-File .\docker-compose.yml -Append
+  $template | Out-File .\docker-compose.yml -Append
 }
 
 function Add-Qbittorrent {
-  param (
-    $TimeZone
-  )
-
-  $Template = @"
+  $template = @"
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
     environment:
-      - TZ=${TimeZone}
+      - TZ=`${TIMEZONE}
       - WEBUI_PORT=8080
     volumes:
       - ./config/qbittorrent-config:/config
@@ -81,93 +75,136 @@ function Add-Qbittorrent {
       - 8080:8080
       - 6881:6881
       - 6881:6881/udp
-    networks:
-      - wsl
     restart: unless-stopped
     
 "@
 
-  $Template | Out-File .\docker-compose.yml -Append
+  $template | Out-File .\docker-compose.yml -Append
+}
+
+function Add-NginxProxyManager {
+  $template = @"
+  nginxproxymanager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginxproxymanager
+    environment:
+      - TZ=`${TIMEZONE}
+    ports:
+      - 80:80
+      - 81:81
+      - 443:443
+    volumes:
+      - ./config/nginxproxymanager-config/data:/data
+      - ./config/nginxproxymanager-config/letsencrypt:/etc/letsencrypt
+    networks:
+      - wsl
+    restart: unless-stopped
+
+"@
+
+  $template | Out-File .\docker-compose.yml -Append
+}
+
+function Add-DuckDns {
+  $template = @"
+  app:
+    container_name: duckdns
+    image: lscr.io/linuxserver/duckdns:latest
+    environment:
+      - TZ=`${TIMEZONE}
+      - SUBDOMAINS=`${DUCK_DNS_SUBDOMAINS}
+      - TOKEN=`${DUCK_DNS_TOKEN}
+    networks:
+      - wsl
+    restart: unless-stopped
+
+"@
+  
+  $template | Out-File .\docker-compose.yml -Append
+
+  $subdomains = Set-Prompt -prompt "enter duckdns subdomain(s) eg:mydomain.duckdns.org,mydomain2.duckdns.org..." -color magenta
+  "DUCK_DNS_SUBDOMAINS=${subdomains}" | Out-File .\.env -Encoding utf8 -Append
+  $token = Set-Prompt -prompt "enter duckdns token available via duckdns dashboard" -color magenta
+  "DUCK_DNS_TOKEN=${token}" | Out-File .\.env -Encoding utf8 -Append
 }
 
 function Initial {
-  $Initial = @"
+  $initial = @"
 ---
 services:
 "@
 
-  $Initial | Out-File .\docker-compose.yml -Force
+  $initial | Out-File .\docker-compose.yml -Force
 }
 
 function Final {
-  $Final = @"
+  $final = @"
 networks:
   wsl:
     external: true
     driver: bridge
 "@
 
-  $Final | Out-File .\docker-compose.yml -Append
+  $final | Out-File .\docker-compose.yml -Append
 }
 
 try {
-  $dockerVersion = docker --version 2>&1
+  $dockerVersion = docker --version
 }
 catch {
   $dockerVersion = $_.Exception.Message
 }
 
 if ($dockerVersion) {
-  Write-Host "docker is installed. version: $dockerVersion"
+  Set-Prompt -prompt "docker is installed. version: $dockerVersion, ensure Docker Desktop is running in the background & then press enter to proceed" -color green
 }
 else {
-  Write-Host "docker desktop not installed, attempting to download & install"
+  Write-Host "docker desktop not installed, attempting to download & install" -ForegroundColor Yellow
   if (-not(Test-Path "DockerDesktopInstaller.exe")) {
     Invoke-WebRequest -Uri "https://desktop.docker.com/win/stable/Docker%20Desktop%20Installer.exe" -OutFile DockerDesktopInstaller.exe
   }
-  Start-Process "DockerDesktopInstaller.exe" -Wait install
-  Read-Host -Prompt "docker installation complete. press enter to exit & re-run the script after running docker desktop application manually"
+  Start-Process "DockerDesktopInstaller.exe" -Wait install -Verbose
+  Set-Prompt -prompt "docker installation complete. press enter to exit & re-run the script after running docker desktop application manually" -color blue
 }
 
-if ($null -ne (docker network ls -f "name=wsl" -q)) {
-  Write-Host "docker network name wsl already exists, skipping creation"
+$timeZone = Set-Prompt -prompt "timezone? [Default: Asia/Singapore]" -color magenta
+if ($timeZone -eq '') {
+  $timeZone = "Asia/Singapore"
 }
-else {
-  docker network create wsl
-}
-
-$TimeZone = Read-Host -Prompt "timezone? [Default: Asia/Singapore]"
-[void](($TimeZone = $TimeZone) -or ($TimeZone = "Asia/Singapore"))
+"TIMEZONE=${timeZone}" | Out-File .\.env -Encoding utf8
 
 Initial
 
 $servarr = 'sonarr', 'radarr', 'bazarr', 'prowlarr', 'overseerr'
 $servarr | ForEach-Object {
-  $choice = Read-Host -Prompt "install $($_)? [y/n]"
+  $choice = Set-Prompt -prompt "install $($_)? [y/n]" -color magenta
   if ($choice -eq 'y' -or $choice -eq 'Y' -or $choice -eq '') {
-    Add-Containarr -Name $_ -TimeZone $TimeZone
+    Add-Containarr -Name $_
   }
 }
 
-$otherr = 'plex', 'qbittorrent'
+$otherr = 'Plex', 'Qbittorrent', 'NginxProxyManager'
 $otherr | ForEach-Object {
-  $choice = Read-Host -Prompt "install $($_)? [y/n]"
+  $containerName = $($_).ToLower()
+  $choice = Set-Prompt -prompt "install $($containerName)? [y/n]" -color magenta
   if ($choice -eq 'y' -or $choice -eq 'Y' -or $choice -eq '') {
-    Invoke-Expression -Command "Add-$($_) $TimeZone"
+    Invoke-Expression -Command "Add-$($_)"
   }
 }
 
-Final
+# Final
 
-Write-Host "a docker-compose.yml has been generated, you may check it first" -ForegroundColor Yellow
-$choice = Read-Host -Prompt "Or straight away run `"docker compose up -d`"? [y/n]"
+Write-Host "a docker-compose.yml has been generated, you may check it first" -ForegroundColor Green
+$choice = Set-Prompt -prompt "Or straight away run `"docker compose up -d`"? [y/n]" -color magenta
 
 if ($choice -eq 'y' -or $choice -eq 'Y' -or $choice -eq '') { 
   docker compose up -d 
 }
 
-Write-Host "creating additional folder for tv & movie"
 $folder = '.\data\media\tv', '.\data\media\movie'
-$folder | ForEach-Object { New-Item -ItemType Directory -Path $_ -ErrorAction SilentlyContinue }
+$folder | ForEach-Object { 
+  Write-Host "creating additional folder [${$_}]" -ForegroundColor blue
+  New-Item -ItemType Directory -Path $_ -ErrorAction SilentlyContinue | Out-Null
+}
 
-Read-Host -Prompt "press enter to exit, you may proceed to configure the *arr services manually"
+Set-Prompt -prompt "press enter to exit, you may proceed to configure the *arr services manually" -color cyan
