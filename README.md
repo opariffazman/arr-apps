@@ -1,7 +1,8 @@
 # arr-apps
 
 suite of *arr application running via dockerized container from standardised images by folks at [lscr.io](https://www.linuxserver.io/).
-currently compatible for windows but docker is running via [WSL2 engine](https://learn.microsoft.com/en-us/windows/wsl/install)
+
+currently tested and compatible for windows but docker is running via [WSL2 engine](https://learn.microsoft.com/en-us/windows/wsl/install)
 
 ## apps included
 
