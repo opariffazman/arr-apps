@@ -13,7 +13,7 @@ currently tested for windows but docker is running via [WSL2 engine](https://lea
 - [radarr](https://radarr.video/) - movie collection manager
 - [sonarr](https://sonarr.tv/) - tv collection manager
 - [bazarr](https://www.bazarr.media/) - subtitles manager
-- [prowlarr](https://wiki.servarr.com/en/prowlarr) - indexer
+- [prowlarr](https://wiki.servarr.com/en/prowlarr) - management of torrent trackers and usenet indexers
 - *[nginxproxymanager](https://nginxproxymanager.com/) - reverse proxy for exposing services securely
 - *[duckdns](https://www.duckdns.org/) - free dynamic dns provider
 
